@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  workflow_call:
+    inputs:
+      module_name:
+        required: true
+        type: string
+      module_version:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: display variables
+        shell: pwsh
+        run: |
+          write-host "Publishing module"
+          write-host "REPOSITORY_VAR: $($env:REPOSITORY_VAR)" -ForegroundColor Cyan
+          write-host "ORGANIZATION_VAR: $($env:ORGANIZATION_VAR)"
+
+          write-host "GITHUB_SHA: $($env:GITHUB_SHA)"
+        env:
+          REPOSITORY_VAR: ${{ vars.REPOSITORY_VAR }}
+          ORGANIZATION_VAR: ${{ vars.ORGANIZATION_VAR }}
