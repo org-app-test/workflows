@@ -1,0 +1,92 @@
+name: cd-pipeline-v2
+
+run-name: Deployment to ${{ inputs.Environment }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      Version:
+        description: "The version of the application to be updated to the manifest repository, e.g. 1.2.3 (optional, auto-filled if not provided)"
+        required: false
+        type: string
+      Environment:
+        description: "The environment of the application to be deployed to"
+        required: true
+        type: choice
+        default: 'dev'
+        options:
+          - dev
+          - qa
+          - staging
+          - preprod
+          - prod
+  workflow_call:
+    inputs:
+      # section for product relevant input
+      Version:
+        description: "The version of the application to be updated to the manifest repository"
+        required: true
+        type: string
+      Environment:
+        description: "The environment of the application to be deployed to"
+        required: true
+        type: string
+    secrets:
+      # section for product relevant secrets
+      MANIFEST_REPO_PASSWORD:
+        description: "The password/token with write access to the manifest repository to be updated"
+        required: true
+      # end section for product relevant secrets
+      # section for secrets relevant for making the build task work
+      BUILD_TASK_REGISTRY_PWD:
+        description: "password matching the input BuildTaskRegistryUser"
+        required: true
+      # end section for secrets relevant for making the build task work
+
+# This workflow aims to contains all the jobs required to do continuous deployment to an environment, where all the jobs should be treated and executed
+# as a single transaction, hereby enabled by this concurrency group on the level of this entire workflow.
+concurrency:
+  group: ${{ inputs.Environment }}-${{ github.ref_name }}
+
+jobs:
+  calculateVersion:
+    name: Calculate Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set-version.outputs.version }}
+    steps:
+      - name: Set version
+        id: set-version
+        run: |
+          if [[ -n "${{ inputs.Version }}" ]]; then
+            echo "::set-output name=version::${{ inputs.Version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "::set-output name=version::${{ github.ref_name }}"
+          elif [[ "${{ github.ref }}" == refs/heads/master ]]; then
+            echo "::set-output name=version::$(git rev-parse --short HEAD)"
+          else
+            echo "::set-output name=version::unknown"
+      - name: Debug version
+        run: "echo 'Version: ${{ steps.set-version.outputs.version }}'"
+
+  calculateClusterInfo:
+    name: CalculateClusterInfo
+    runs-on:
+      - ubuntu-latest
+    environment: ${{ inputs.Environment }}
+    outputs:
+      authTokenSecretName: ${{ steps.authTokenSecretName.outputs.value }}
+      clusterUrl: ${{ steps.clusterUrl.outputs.value }}
+    steps:
+      - id: authTokenSecretName
+        run: echo "value=${{ vars.ClusterAuthTokenSecretName }}" >> "$GITHUB_OUTPUT"
+      - id: clusterUrl
+        run: echo "value=${{ vars.CLUSTERURL }}" >> "$GITHUB_OUTPUT"
+
+  deploy:
+      name: Debug Deploy
+      needs: calculateVersion
+      runs-on: ubuntu-latest
+      steps:
+        - name: Debug Version
+          run: "echo Calculated Version: ${{ needs.calculateVersion.outputs.version }}"
