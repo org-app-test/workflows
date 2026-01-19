@@ -67,7 +67,8 @@ jobs:
             short_sha="${GITHUB_SHA::7}"
             echo "version=${short_sha}" >> "$GITHUB_OUTPUT"
           else
-            echo "version=unknown" >> "$GITHUB_OUTPUT"
+            echo "ERROR: Unable to determine version. Provide inputs.Version or run from a tag/master." >&2
+            exit 1
           fi
       - name: Debug version
         run: "echo 'Version: ${{ steps.set-version.outputs.version }}'"
