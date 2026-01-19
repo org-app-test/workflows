@@ -57,15 +57,18 @@ jobs:
     steps:
       - name: Set version
         id: set-version
+        shell: bash
         run: |
           if [[ -n "${{ inputs.Version }}" ]]; then
-            echo "::set-output name=version::${{ inputs.Version }}"
+            echo "version=${{ inputs.Version }}" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            echo "::set-output name=version::${{ github.ref_name }}"
-          elif [[ "${{ github.ref }}" == refs/heads/master ]]; then
-            echo "::set-output name=version::$(git rev-parse --short HEAD)"
+            echo "version=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+            short_sha="${GITHUB_SHA::7}"
+            echo "version=${short_sha}" >> "$GITHUB_OUTPUT"
           else
-            echo "::set-output name=version::unknown"
+            echo "version=unknown" >> "$GITHUB_OUTPUT"
+          fi
       - name: Debug version
         run: "echo 'Version: ${{ steps.set-version.outputs.version }}'"
 
